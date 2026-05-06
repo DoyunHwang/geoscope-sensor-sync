@@ -277,3 +277,7 @@ compile_commands.json
 ## Local Additions
 .cache/
 .vscode/
+
+## Config files
+data/config/net/ssid
+data/config/net/key
