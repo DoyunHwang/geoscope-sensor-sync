@@ -9,7 +9,7 @@ extern char MQTT_BROKER_IP[];
 bool timeSynced = false;
 int64_t utc_mac_offset = 0;
 uint32_t last_sync_ms = 0;
-uint32_t sync_interval_ms = 300000;  // 5 minutes
+uint32_t sntp_poll_s = 3600;         // 1 hour
 char ts_server[CHAR_BUF_SIZE] = "";
 
 static void captureOffset() {
@@ -31,10 +31,14 @@ void timeSyncSetup() {
     configTime(0, 0, server);
 }
 
+void timeSyncSetPollInterval(uint32_t seconds) {
+    sntp_poll_s = seconds;
+}
+
 void timeSyncLoop() {
     if (time(nullptr) < 1000000000LL)
         return;  // SNTP not yet synced
-    if (!timeSynced || millis() - last_sync_ms > sync_interval_ms)
+    if (!timeSynced || millis() - last_sync_ms > sntp_poll_s * 1000UL)
         captureOffset();
 }
 
@@ -63,10 +67,10 @@ void timeSyncLoad() {
         ts_server[CHAR_BUF_SIZE - 1] = '\0';
         f.close();
     }
-    f = LittleFS.open("/config/timesync/interval", "r");
+    f = LittleFS.open("/config/timesync/poll", "r");
     if (f) {
         int v = f.parseInt();
-        if (v > 0) sync_interval_ms = (uint32_t)v * 1000;
+        if (v > 0) sntp_poll_s = (uint32_t)v;
         f.close();
     }
 }
@@ -74,30 +78,30 @@ void timeSyncLoad() {
 void timeSyncSave() {
     File f = LittleFS.open("/config/timesync/server", "w");
     if (f) { f.println(ts_server); f.close(); }
-    f = LittleFS.open("/config/timesync/interval", "w");
-    if (f) { f.println(sync_interval_ms / 1000); f.close(); }
+    f = LittleFS.open("/config/timesync/poll", "w");
+    if (f) { f.println(sntp_poll_s); f.close(); }
 }
 
 void timeSyncStatus(Print* p) {
-    p->print(F("NTP Server : "));
+    p->print(F("NTP Server    : "));
     p->println(ts_server[0] ? ts_server : MQTT_BROKER_IP);
-    p->print(F("Synced     : "));
+    p->print(F("Recapture     : "));
+    p->print(sntp_poll_s);
+    p->println(F(" s"));
+    p->print(F("Synced        : "));
     p->println(timeSynced ? F("yes") : F("no"));
     if (timeSynced) {
-        p->print(F("Sync age   : "));
+        p->print(F("Sync age      : "));
         p->print(getSyncAge() / 1000);
         p->println(F(" s"));
         char buf[24];
         snprintf(buf, sizeof(buf), "%lld", utc_mac_offset);
-        p->print(F("UTC offset : "));
+        p->print(F("UTC offset    : "));
         p->print(buf);
         p->println(F(" us"));
         snprintf(buf, sizeof(buf), "%lld", getEpochUs());
-        p->print(F("Epoch now  : "));
+        p->print(F("Epoch now     : "));
         p->print(buf);
         p->println(F(" us"));
     }
-    p->print(F("Interval   : "));
-    p->print(sync_interval_ms / 1000);
-    p->println(F(" s"));
 }

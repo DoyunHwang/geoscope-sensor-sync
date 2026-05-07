@@ -539,14 +539,14 @@ bool ts_ntpserver(Commander &cmd) {
 	return 0;
 }
 
-bool ts_interval(Commander &cmd) {
+bool ts_poll(Commander &cmd) {
 	int payload;
 	if (cmd.getInt(payload) && payload > 0) {
-		sync_interval_ms = (uint32_t)payload * 1000;
+		timeSyncSetPollInterval((uint32_t)payload);
 	} else {
 		cmd.rewind();
-		cmd.print(F("Re-sync interval: "));
-		cmd.print(sync_interval_ms / 1000);
+		cmd.print(F("SNTP poll interval: "));
+		cmd.print(sntp_poll_s);
 		cmd.println(F(" s"));
 	}
 	return 0;
@@ -561,6 +561,7 @@ bool inline ts_load(Commander &cmd) {
 	timeSyncLoad();
 	const char* server = ts_server[0] ? ts_server : MQTT_BROKER_IP;
 	configTime(0, 0, server);
+	timeSyncSetPollInterval(sntp_poll_s);
 	return 0;
 }
 
@@ -568,7 +569,7 @@ const commandList_t tsCommands[] = {
 	{"status", ts_status, "Show time sync status"},
 	{"sync", ts_sync, "Force immediate offset re-capture"},
 	{"server", ts_ntpserver, "Get/Set NTP server hostname or IP"},
-	{"interval", ts_interval, "Get/Set re-sync interval in seconds"},
+	{"poll", ts_poll, "Get/Set offset recapture interval in seconds"},
 	{"save", ts_save, "Save configuration to filesystem"},
 	{"load", ts_load, "Load configuration from filesystem"},
 	{"exit", sub_exit, "Return to main prompt"}
