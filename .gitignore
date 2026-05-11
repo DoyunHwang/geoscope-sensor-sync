@@ -279,5 +279,6 @@ compile_commands.json
 .vscode/
 
 ## Config files
-data/config/net/ssid
-data/config/net/key
+# data/config/net/ssid
+# data/config/net/key
+data/config
